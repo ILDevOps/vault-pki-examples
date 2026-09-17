@@ -75,6 +75,7 @@ If you need further details about these parameters, refer to their API documenta
 2) Export VAULT_ADDR, VAULT_NAMESPACE, and VAULT_TOKEN to env vars.
 3) Start [PKI CRL OCSP Tutorial, from this point](https://developer.hashicorp.com/vault/tutorials/pki/pki-unified-crl-ocsp-cross-cluster#configure-pki-secrets-engines). Skip the performance replication setup.
 
+```sh
  1065  vault write pki-int-both/config/crl \\n    auto_rebuild=true \\n    unified_crl=true \\n    unified_crl_on_existing_paths=true \\n    cross_cluster_revocation=true\n
  1066  vault write \\n    pki-int-local/issue/local-example-dot-com \\n    common_name="test.local.example.com" \\n    ttl="1h" -format=json > test.local.example.com.json\n
  1067  cat test.local.example.com.json
@@ -87,7 +88,7 @@ If you need further details about these parameters, refer to their API documenta
  1074  vault write \\n    pki-int-both/issue/both-example-dot-com \\n    common_name="test.both.example.com" \\n    ttl="1h" -format=json > test.both.example.com.json\n
  1075  cat test.both.example.com.json | jq -r '.data.serial_number' > test.both.example.com.serial.txt
  1076  cat test.both.example.com.json | jq -r '.data.certificate' > test.both.example.com.crt
-
+```
 
 
 ```sh
