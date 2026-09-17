@@ -64,16 +64,64 @@ If you need further details about these parameters, refer to their API documenta
 
 |                                          |                                                                                      |                                                                                         |
 |------------------------------------------|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| auto_rebuild                             | auto rebuilds CRL                                                                    | https://developer.hashicorp.com/vault/api-docs/secret/pki#auto_rebuild                  |
-| cross_cluster_revocation (not HCP Vault) | Enables cross-cluster revocation request queues, for Performance Replica secondaries | https://developer.hashicorp.com/vault/api-docs/secret/pki#cross_cluster_revocation      |
-| unified_crl                              | Enables unified CRL and OCSP building, to synchronize all revocations between clusters | https://developer.hashicorp.com/vault/api-docs/secret/pki#unified_crl                   |
-| unified_crl_on_existing_paths            | Enables serving the unified CRL and OCSP on the existing, previously cluster-local paths (e.g., `/pki/crl` will now contain the unified CRL when enabled). | https://developer.hashicorp.com/vault/api-docs/secret/pki#unified_crl_on_existing_paths |
+| auto_rebuild                             | auto rebuilds CRL                                                                    | <https://developer.hashicorp.com/vault/api-docs/secret/pki#auto_rebuild>                  |
+| cross_cluster_revocation (not HCP Vault) | Enables cross-cluster revocation request queues, for Performance Replica secondaries | <https://developer.hashicorp.com/vault/api-docs/secret/pki#cross_cluster_revocation>      |
+| unified_crl                              | Enables unified CRL and OCSP building, to synchronize all revocations between clusters | <https://developer.hashicorp.com/vault/api-docs/secret/pki#unified_crl>                   |
+| unified_crl_on_existing_paths            | Enables serving the unified CRL and OCSP on the existing, previously cluster-local paths (e.g., `/pki/crl` will now contain the unified CRL when enabled). | <https://developer.hashicorp.com/vault/api-docs/secret/pki#unified_crl_on_existing_paths> |
 
 ## Demonstrate simple CRL certificate revocation
 
-1) Spin up HCP % vault cluster
-2) Export VAULT_ADDR, VAULT_NAMESPACE, and VAULT_TOKEN to env vars.
-3) Start [PKI CRL OCSP Tutorial, from this point](https://developer.hashicorp.com/vault/tutorials/pki/pki-unified-crl-ocsp-cross-cluster#configure-pki-secrets-engines). Skip the performance replication setup.
+1. Spin up an HCP Vault cluster at https://portal.cloud.hashicorp.com/services/vault.
+1. Export the following to your terminal environment:
+  VAULT_ADDR - from your Cluster URL - either public or private (via peered cloud network)
+  VAULT_NAMESPACE - `admin` is the default base namespace on HCP Vault
+  VAULT_TOKEN - Copy an admin token from the cloud portal
+1. Verify you are connected with `vault token lookup`, which will print out your token and TTL, if successful. 
+
+  a. Errors for an outdated or missing token will look something like the following error:
+  ```sh
+URL: GET https://$cluster_url/v1/auth/token/lookup-self
+Code: 403. Errors:
+  * 2 errors occurred:
+        * permission denied
+        * invalid token
+  ```
+
+For this error, check the URL of the server:
+  ```sh
+  Error looking up token: Get "https://127.0.0.1:8200/v1/auth/token/lookup-self": dial tcp 127.0.0.1:8200: connect: connection refused
+  ```
+
+  b. Success looks like this
+  ```sh
+  % vault token lookup                                                                                                             
+Key                 Value
+---                 -----
+accessor            PTP9WufDTuNRi3OCLNWGifIB.xMjMS
+creation_time       1789673121
+creation_ttl        6h
+display_name        token-hcp-root
+entity_id           a78205f9-2835-7523-74c6-cc3968530777
+expire_time         2026-09-18T01:25:21.099490368Z
+explicit_max_ttl    0s
+id                  <token>
+issue_time          2026-09-17T19:25:21.099501798Z
+meta                <nil>
+namespace_path      admin/
+num_uses            0
+orphan              true
+path                auth/token/create/hcp-root
+policies            [default hcp-root]
+renewable           false
+role                hcp-root
+```
+
+1. Follow the steps below, which are based on [PKI CRL OCSP Tutorial, from this point](https://developer.hashicorp.com/vault/tutorials/pki/pki-unified-crl-ocsp-cross-cluster#configure-pki-secrets-engines), skipping the performance replication setup, which does not apply for HCP Vault.
+
+
+```sh
+vault secrets enable -path "pki-$engine" pki
+
 
 ```sh
 % vault write pki-int-both/config/crl \
@@ -82,7 +130,7 @@ If you need further details about these parameters, refer to their API documenta
     unified_crl_on_existing_paths=true \
     cross_cluster_revocation=true
 
-% % vault write \
+% vault write \
   pki-int-local/issue/local-example-dot-com \
   common_name="test.local.example.com" \
   ttl="1h" -format=json > test.local.example.com.json
@@ -91,6 +139,7 @@ If you need further details about these parameters, refer to their API documenta
 % cat test.local.example.com.json | jq -r '.data.serial_number' > test.local.example.com.serial.txt
 % cat test.local.example.com.serial.txt
 % cat test.local.example.com.json | jq -r '.data.certificate' > test.local.example.com.crt
+
 % vault write \
   pki-int-cross/issue/cross-example-dot-com \
   common_name="test.cross.example.com" \
@@ -102,6 +151,7 @@ If you need further details about these parameters, refer to their API documenta
   pki-int-both/issue/both-example-dot-com \
   common_name="test.both.example.com" \
   ttl="1h" -format=json > test.both.example.com.json
+
 % cat test.both.example.com.json | jq -r '.data.serial_number' > test.both.example.com.serial.txt
 % cat test.both.example.com.json | jq -r '.data.certificate' > test.both.example.com.crt
 ```
@@ -114,6 +164,7 @@ If you need further details about these parameters, refer to their API documenta
     -issuer pki-int-local.cert.pem \
     -cert test.local.example.com.crt \
     -url $VAULT_ADDR/v1/admin/pki-int-local/ocsp
+
 test.local.example.com.crt: good
         This Update: Sep 16 21:07:55 %GMT
         Next Update: Sep 17 09:07:55 %GMT
